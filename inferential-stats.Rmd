@@ -1,0 +1,299 @@
+---
+title: "Thesis - Inferentials"
+author: "Rachael Pyram"
+date: "2023-10-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Reading in data
+```{r}
+data = read.csv("C:/Users/racha/Desktop/clean_v2.csv")
+
+```
+
+## Mean centering IVs
+```{r}
+#function to mean center the predictors
+mean_center = function (x) {
+  scale(x, scale = TRUE)
+}
+
+df1 = mean_center(data[c(55:56)]) #cols are for prosocial and risk
+df1 = as.data.frame(df1)
+
+#checking mean centering
+summary(df1$Avg_Risk) #mean = 0, so it worked
+
+
+#adding outcome var and controls into df
+df1$Avg_AIntent = data$Avg_AIntent
+df1$Avg_Ally = data$Avg_Ally
+df1$Gender = data$Gender
+df1$Race = data$Race
+
+```
+
+## Dummy coding control variables
+```{r}
+library(dplyr)
+
+#making 1 = male for gender, all else = 0
+#making 1 = white for race, all else = 0
+dummy = function(x) {
+  case_when(x %in% c("1") ~ 1,
+          .default = 0)
+}
+
+df1 = df1 %>% mutate_at(c(5:6), dummy)
+
+```
+
+## Rerunning corr matrix on df1
+```{r}
+library(psych)
+corr = corr.test(df1)
+corr$stars
+
+#matched results found in the descriptives rmd file
+```
+
+## Creating moderated multiple regression model
+```{r, include = FALSE}
+#first running models without the controls
+IRP_M1 = lm(Avg_AIntent ~ Avg_Risk * Avg_Proscl, df1)
+summary(IRP_M1)
+
+ARP1_M1 = lm(Avg_Ally ~ Avg_Risk * Avg_Proscl, df1)
+summary(ARP1_M1)
+
+#running models with both controls
+IGRRP_M2 = lm(Avg_AIntent ~ Gender + Race + Avg_Risk * Avg_Proscl, df1)
+summary(IGRRP_M2)
+
+AGRRP_M2 = lm(Avg_Ally ~ Gender + Race + Avg_Risk * Avg_Proscl, df1)
+summary(AGRRP_M2)
+
+#running models with just gender as a control (bc it was sig corr)
+IRRP_M3 = lm(Avg_AIntent ~ Gender + Avg_Risk * Avg_Proscl, df1)
+summary(IRRP_M3)
+
+ARRP_M3 = lm(Avg_Ally ~ Gender + Avg_Risk * Avg_Proscl, df1)
+summary(ARRP_M3)
+
+```
+
+  
+## HLR
+```{r}
+library(lm.beta)
+
+##DV = Allyship Intentions Models
+  #first running models with just the controls
+Int_M1 = lm(Avg_AIntent ~ Gender + Race, df1)
+summary(lm.beta(Int_M1)) #gives stzd and unstzd betas
+
+  #running models with controls and IVs
+Int_M2 = lm(Avg_AIntent ~ Gender + Race + Avg_Risk + Avg_Proscl, df1)
+summary(lm.beta(Int_M2))
+
+  #running models with controls, IVs, and interaction
+Int_M3 = lm(Avg_AIntent ~ Gender + Race + Avg_Risk * Avg_Proscl, df1)
+summary(lm.beta(Int_M3))
+
+
+########################
+
+
+##DV = Allyship Endorsement Models
+  #first running models with just the controls
+End_M1 = lm(Avg_Ally ~ Gender + Race, df1)
+summary(lm.beta(End_M1))
+
+  #running models with controls and IVs
+End_M2 = lm(Avg_Ally ~ Gender + Race + Avg_Risk + Avg_Proscl, df1)
+summary(lm.beta(End_M2))
+
+  #running models with controls, IVs, and interaction
+End_M3 = lm(Avg_Ally ~ Gender + Race + Avg_Risk * Avg_Proscl, df1)
+summary(lm.beta(End_M3))
+
+
+#############################
+#############################
+
+#re-running models without race as a control bc it was nonsig in corr matrix
+
+
+##DV = Allyship Intentions Models
+  #first running models with just gender as a controls
+SuppInt_M1 = lm(Avg_AIntent ~ Gender, df1)
+summary(lm.beta(SuppInt_M1)) 
+
+  #running models with gender as a control and IVs
+SuppInt_M2 = lm(Avg_AIntent ~ Gender + Avg_Risk + Avg_Proscl, df1)
+summary(lm.beta(SuppInt_M2))
+
+  #running models with gender as control, IVs, and interaction
+SuppInt_M3 = lm(Avg_AIntent ~ Gender + Avg_Risk * Avg_Proscl, df1)
+summary(lm.beta(SuppInt_M3))
+
+
+########################
+
+
+##DV = Allyship Endorsement Models
+  #first running models with just gender as a control
+SuppInt_M1 = lm(Avg_Ally ~ Gender, df1)
+summary(lm.beta(SuppInt_M1))
+
+  #running models with gender a control and IVs
+SuppInt_M2 = lm(Avg_Ally ~ Gender + Avg_Risk + Avg_Proscl, df1)
+summary(lm.beta(SuppInt_M2))
+
+  #running models with gender as a control, IVs, and interaction
+SuppInt_M3 = lm(Avg_Ally ~ Gender + Avg_Risk * Avg_Proscl, df1)
+summary(lm.beta(SuppInt_M3))
+
+
+
+
+#https://www.r-bloggers.com/2010/01/r-tutorial-series-hierarchical-linear-regression/
+
+
+```
+  
+
+## Interaction Viz
+```{r}
+library(interactions)
+
+interactions::interact_plot(End_M3, pred = Avg_Risk, modx = Avg_Proscl, x.label = "Risk tolerance", y.label = "Allyship endorsement", legend.main = "Prosocial tendencies", main.title = "Risk Tolerance x Prosocial Tendencies on Allyship Endorsement", line.thickness = 1.5, colors = c("PuRd"))
+
+interactions::interact_plot(Int_M3, pred = Avg_Risk, modx = Avg_Proscl, x.label = "Risk tolerance", y.label = "Allyship intentions", legend.main = "Prosocial tendencies", main.title = "Risk Tolerance x Prosocial Tendencies on Allyship Intentions", line.thickness = 1.5, colors = c("BuPu"))
+```
+  
+# Code below was not actually used in final reporting  
+## Checking assumptions
+```{r}
+library(lmtest)
+
+#checking residuals
+print(dwtest(Int_M1))
+  ##DW ~= 2, no autocorrelation in the residuals
+
+#multicollinearity
+library(car)
+print(vif(Int_M1)) 
+  ## Values all around 1; no multicollinearity issues
+
+#checking for heteroskedasticity
+print(bptest(Int_M1)) #heteroskedasticity detected
+
+#normality assumption
+shapiro.test(resid(Int_M1)) #nonnormal data; outliers?
+
+#checking outliers
+print(outlierTest(Int_M1)) #indicated 5 observations were significant outliers
+
+#checking for influential observations
+influ = influence.measures(Int_M1)
+plot(influ$infmat[, "cook.d"], 
+     main = "Cook's distance plot", 
+     ylab = "Cook's distance")
+
+#plot of all boxplots
+par(mfcol = c(2,2))
+boxplot(df1$Avg_Proscl, main = "Boxplot for Avg Prosocial Tendencies")
+boxplot(df1$Avg_Risk, main = "Boxplot for Avg Risk Tolerance")
+boxplot(df1$Avg_AIntent, main = "Boxplot for Avg Ally Intentions")
+boxplot(df1$Avg_Ally, main = "Boxplot for Allyship Endorsement")
+
+#gives outlier values to be removed
+boxplot(df1$Avg_Proscl)$out
+boxplot(df1$Avg_Risk)$out
+boxplot(df1$Avg_AIntent)$out
+boxplot(df1$Avg_Ally)$out
+
+#outliers link: https://uedufy.com/how-to-run-moderation-analysis-in-r-single-moderator/
+
+```
+  
+## Investigating removing outliers
+```{r}
+#creating a copy of the dataset to examine the effect of outliers
+df2 = df1
+
+#rounding to 5 decimal places, so outliers identified by the boxplot will be the same length as the values in the dataset (this was an error and affected ability to find the outliers)
+df2 = round(df2[c(1:4)], 6)
+
+#not sure why round() is removing demog, but adding back in here
+df2$Gender = df1$Gender
+df2$Race = df1$Race
+                        
+#saving outlier values for each variable
+prs_out = c(boxplot(df2$Avg_Proscl)$out)
+rsk_out = c(boxplot(df2$Avg_Risk)$out)
+int_out = c(boxplot(df2$Avg_AIntent)$out)
+aly_out = c(boxplot(df2$Avg_Ally)$out)
+
+#confirming the outliers identified are actually in the data
+sum(df2$Avg_Proscl==-2.711268) #pulled first num in prs_out to test
+
+library(dplyr)
+df2 = df2 %>% 
+  filter(!Avg_Proscl %in% c(prs_out)) %>%
+  filter(!Avg_Risk %in% c(rsk_out)) %>%
+  filter(!Avg_AIntent %in% c(int_out)) %>%
+  filter(!Avg_Ally %in% c(aly_out))
+
+#checking if filtering actually removed the outliers
+sum(df2$Avg_Proscl==-2.711268)
+
+## note: removing all outliers across the four variables decreased the n from 431 to 351
+
+```
+  
+### Re-running models without outliers
+```{r}
+
+model3 = lm(Avg_AIntent ~ Gender + Race + Avg_Risk * Avg_Proscl, df2)
+summary(model3)
+
+model4 = lm(Avg_Ally ~ Gender + Race + Avg_Risk * Avg_Proscl, df2)
+summary(model4)
+
+##re-checking assumptions for model 3
+plot(model3)
+
+library(lmtest)
+#checking residuals
+print(dwtest(model3))
+  ##DW ~= 2, no autocorrelation in the residuals
+
+#multicollinearity
+library(car)
+print(vif(model3)) #no multicollinearity detected
+
+#checking for heteroskedasticity
+print(bptest(model3)) #heteroskedasticity not detected
+
+#normality assumption
+shapiro.test(resid(model3)) #nonnormal data; removing outliers did not change this?
+
+#checking outliers
+print(outlierTest(model3)) #indicated 1 observations was a significant outlier
+
+par(mfcol = c(2,2))
+boxplot(df2$Avg_Proscl, main = "Boxplot for Avg Prosocial Tendencies")
+boxplot(df2$Avg_Risk, main = "Boxplot for Avg Risk Tolerance")
+boxplot(df2$Avg_AIntent, main = "Boxplot for Avg Ally Intentions")
+boxplot(df2$Avg_Ally, main = "Boxplot for Allyship Endorsement")
+
+
+## conclusion: will not be removing outliers
+```
+

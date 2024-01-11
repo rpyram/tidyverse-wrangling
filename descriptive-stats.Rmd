@@ -1,0 +1,143 @@
+---
+title: "Thesis - Descriptives"
+author: "Rachael Pyram"
+date: "2023-09-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Reading in data
+```{r}
+#importing data
+clean = read.csv("C:/Users/racha/Desktop/clean.csv")
+
+#working dataset
+data = clean[ ,-c(1)] #removed the first extraneous col
+
+library(tidyverse)
+data = data %>% mutate_at(c(3:40, 45:47), as.numeric) #forcing numeric
+
+```
+
+## Scale scores 
+```{r}
+#subsetting scales
+library(psych)
+
+##prosocial tendencies
+prscl = data[c(3:28)]
+describe(prscl)
+
+##risk tolerance
+risk = data[c(29:34)]
+describe(risk)
+
+#allyship
+ally = data[c(35:40)]
+describe(ally)
+
+#intentions to engage in allyship
+intent = data[c(45:47)]
+describe(intent)
+
+
+#creating scale scores and merging to the "data" dataset
+library(dplyr)
+data = data %>% 
+  mutate(Avg_Proscl = rowMeans(prscl, na.rm = TRUE)) %>%
+  mutate(Avg_Risk = rowMeans(risk, na.rm = TRUE)) %>%
+  mutate(Avg_Ally = rowMeans(ally, na.rm = TRUE)) %>%
+  mutate(Avg_AIntent = rowMeans(intent, na.rm = TRUE))
+
+#note: na.rm drops NA from analysis; technically a form of imputation
+
+```
+
+## Reliability
+```{r}
+library(psych)
+
+#Prosocial tendencies
+print(alpha(prscl, na.rm = TRUE, check.keys = TRUE))
+  ##note: alpha = .77
+
+#Risk taking
+print(alpha(risk, na.rm = TRUE, check.keys = TRUE))
+  ##note: alpha = .79
+
+#Allyship
+print(alpha(ally, na.rm = TRUE, check.keys = TRUE))
+  ##note: alpha = .86
+
+#Allyship intentions
+print(alpha(intent, na.rm = TRUE, check.keys = TRUE))
+  ##note: alpha = .91
+
+```
+
+## Correlation matrix for results section
+```{r}
+#isolating scale scores
+matrix = data[c(48:49, 54:57)]
+
+#dummy coding control variables
+#making 1 = male for gender, all else = 0
+#making 1 = white for race, all else = 0
+dummy = function(x) {
+  case_when(x %in% c("1") ~ 1,
+          .default = 0)
+}
+matrix = matrix %>% mutate_at(c(1:2), dummy)
+
+#correlation 
+corr = corr.test(matrix)
+corr$stars #shows significant corr
+
+#getting mean and sd for control var
+describe(matrix$Gender) #mean = .49, sd = .5
+describe(matrix$Race) #mean = .75, sd = .43
+
+#getting mean and sd for IVs
+describe(matrix$Avg_Proscl) #mean = 2.79, sd = .46
+describe(matrix$Avg_Risk) #mean = 3.08, sd = .67
+
+#getting mean and sd for DVs
+describe(matrix$Avg_Ally) #mean = 3.35, sd = .76
+describe(matrix$Avg_AIntent) #mean = 3.67, sd = .64
+```
+
+## Demographic statistics
+```{r}
+#looking at the range in participant age
+describe(data$Age_1, na.rm = TRUE)
+hist(data$Age_1)
+
+#looking at participant gender
+describe(data$Gender)
+  ##table() gives number per category 
+  ##recall: male = 1, female = 2, nonbinary = 3, prefer not to say = 4
+table(data$Gender)
+
+#looking at participant race
+describe(data$Race)
+  ##table() gives number per category 
+  ##recall: White = 1, Black/AA = 2, American Indian = 3, Native Hawaiian = 4, Other = 5, Mixed = 6
+table(data$Race)
+
+#looking at participant education
+describe(data$Educa)
+  ##table() gives number per category 
+  ##recall: less than hs = 1, hs = 2, some college = 3, 2yr = 4, 4yr = 5, grad/prof = 6
+table(data$Educa)
+
+```
+
+## Exporting
+```{r}
+#exporting clean data
+write.csv(data, file = "C:/Users/racha/Desktop/clean_v2.csv")
+
+```
